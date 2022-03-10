@@ -1,0 +1,133 @@
+---
+title: "**Athlete Adduction Strength Time Series Analysis**"
+author: "Damien Bovalino"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+![](Adductor_Test.jpg)
+
+# Analysis objective
+To understand the change over time in an athlete's adductor strength as measured at a knee flexion of 0 degrees. 
+
+
+## Code
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, output=FALSE}
+#Load packages to be able to use their functions
+library(tidyverse)
+library(readxl)
+library(here)
+library(ggplot2)
+library(viridis)
+library(lubridate)
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Importing athlete force data.
+force_data_1 <- read_csv(here("","Data/Dataset1_Assessment1.csv"))
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Create new variable for test date converting Date from a character to a date format, and remove the Date variable to avoid confusion.
+force_data_2 <- force_data_1 %>% 
+  mutate(Test_date = as.Date(Date, tryFormats = c("%d/%m/%Y"))) 
+  
+force_data_3 <-   
+  select(force_data_2, -Date)
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Pivot data so that force for each limb can be plotted.
+force_data_wider_1 <- force_data_3 %>%
+  filter(Name == "Cheyenne") %>% 
+  pivot_wider(names_from = Limb, values_from = Force)
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Create a data frame of equal left and right force to then plot along with actuals to understand if differences in each leg's relative strength changed over time. ie. was one leg injured?
+Line <- data.frame(Left = c(110, 220), Right = c(110, 220))
+
+force_data_wider_1 %>% 
+  ggplot() +
+  geom_point(aes(RIGHT, LEFT, colour = Test_date), size = 2) +
+  geom_line(data=Line, aes(x = Right, y = Left), size = 1) +
+  theme_classic() +
+  labs(title = "Left to Right Leg Force Compared Over Time", y = "Left Leg", x = "Right Leg", colour = "Test date") +
+  scale_colour_viridis() +
+  xlim(110, 220) +
+  ylim(110, 220) +
+theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", axis.text = element_text(face = "bold"))
+```
+
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Calculate summary statistics for the group and for Cheyenne.
+Group_Mean_Data_1 <- force_data_3 %>% 
+  group_by(Test_date) %>% 
+  summarise(Group_Mean = mean(Force), SD = sd(Force))
+
+Indiv_Mean_Data_1 <- force_data_3 %>% 
+  filter(Name == "Cheyenne") %>% 
+  group_by(Test_date) %>% 
+  summarise(Indiv_Mean = mean(Force))
+```
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Plot Cheyenne against the group view relative strength and variance over time.
+ggplot() +
+  geom_ribbon(data = Group_Mean_Data_1, aes(x = Test_date, ymin = Group_Mean - SD, ymax = Group_Mean + SD), fill = "lightblue") +
+  geom_line(data = Group_Mean_Data_1, aes(x = Test_date, y = Group_Mean)) +
+  geom_line(data = Indiv_Mean_Data_1, aes(x = Test_date, y = Indiv_Mean), colour = "orange") +
+  theme_classic() +
+  labs(title = "Mean & Std. Dev. Leg Force - Individual to Group Over Time", y = "Force", x = "Test Date") +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none", axis.text = element_text(face = "bold"))
+```
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Comparing Cheyenne to the group over time using boxplot
+ggplot() +
+  geom_violin(data = force_data_2, aes(group = Test_date, x = Test_date, y = Force)) +
+  geom_jitter(data = force_data_2, aes(x = Test_date, y = Force, colour = Name)) +
+  scale_colour_viridis_d() +
+  geom_line(data = Indiv_Mean_Data_1, aes(x = Test_date, y = Indiv_Mean), size = 2)+
+  theme_classic() +
+  labs(title = "Leg Force - Violin Plot of Individual to Group Over Time", y = "Force", x = "Test Date") +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none", axis.text = element_text(face = "bold"))
+```
+
+
+## Analysis details: Left to Right Leg Force Compared Over Time
+The first visualisation utilises a scatter plot between each leg to identify if there were discrepancies in leg strength over time. 
+
+### Insight
+We can see that at the start of the testing period leg strength was reasonably symmetrical however towards the end of the testing period the right leg was stronger than the left across multiple tests, suggesting there may have been an injury to the left leg impacting adductor muscles.
+
+
+## Analysis details: Mean & Std. Dev. Leg Force - Individual to Group Over Time
+The second visualisation compares Cheyenne to the group mean and standard deviation to assess her performance relative to the group. 
+Note: outliers were not removed for this analysis.
+
+### Insight
+Cheyenne was consistently below the group mean adductor strength, and dropped further away from the group mean between Feb and Mar which may have been due to an injury to her left adductor muscles. Though being consistenly below the group mean Cheyenne was within 1SD of the group mean and this may be typical of the strength required for the position she played.
+
+
+## Analysis details: Leg Force - Violin Plot of Individual to Group Over Time
+The final visualisation compares Cheyenne to the group over time using violin plots and combines with a jitter plot to see where how other athletes compare.
+
+### Insight
+This visualisation helps see that Cheyenne is fairly consistent with other players below the group median, suggesting that Cheyenne may have the required adductor strength for the position she plays and is certainly not the weakest in the team.
